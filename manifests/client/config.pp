@@ -1,3 +1,4 @@
+# Netbackup client configuration
 class netbackup::client::config (
   $clientname        = $netbackup::client::clientname,
   $masterserver      = $netbackup::client::masterserver,
@@ -5,12 +6,6 @@ class netbackup::client::config (
   $service_enabled   = $netbackup::client::service_enabled,
   $excludes          = $netbackup::client::excludes,
 ){
-
-  # Define the service provider
-  $service_provider = $facts['os']['family'] ? {
-    'RedHat'        => 'redhat',
-    default         => 'init',
-  }
 
   file { 'bp.conf':
     ensure  => file,
@@ -21,20 +16,16 @@ class netbackup::client::config (
     content => template('netbackup/bp.conf.erb'),
   }
 
-  # Only define netbackup init service if netbackup_version fact is set
-  if $::netbackup_version != undef {
-    service { 'netbackup-client':
-      ensure     => $service_enabled,
-      name       => 'netbackup',
-      hasrestart => false,
-      hasstatus  => false,
-      pattern    => 'bpcd',
-      provider   => $service_provider,
-      subscribe  => File['bp.conf']
-    }
+  service { 'netbackup-client':
+    ensure     => $service_enabled,
+    name       => 'netbackup',
+    hasrestart => false,
+    hasstatus  => false,
+    pattern    => 'bpcd',
+    subscribe  => File['bp.conf']
   }
 
-  if $excludes != undef {
+  if $excludes.count {
     file { 'exclude_list':
       ensure  => file,
       path    => '/usr/openv/netbackup/exclude_list',

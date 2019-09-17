@@ -1,21 +1,26 @@
+# NetBackup client installation
 class netbackup::client (
-  $installer         = undef,
-  $version           = undef,
-  $clientname        = $::fqdn,
-  $masterserver      = undef,
-  $mediaservers      = undef,
-  $service_enabled   = true,
-  $excludes          = undef,
-  $tmpinstaller      = '/tmp'
+  Stdlib::AbsolutePath $installer,
+  Optional[String]     $version         = undef,
+  Stdlib::Host         $clientname      = $::fqdn,
+  Stdlib::Host         $masterserver,
+  Array[Stdlib::Host]  $mediaservers    = [],
+  Boolean              $service_enabled = true,
+  Array[String]        $excludes        = [],
+  Stdlib::AbsolutePath $tmpinstaller    = '/tmp'
 )
 {
 
-  if versioncmp($version, $::netbackup_version) < 1 {
-    notice("Installed version ${::netbackup_version} newer or equal to ${version}, not installing")
-    class { 'netbackup::client::config': }
+  $_version_cmp = versioncmp($version, $::netbackup_version)
+  if $_version_cmp == 1 {
+    # $version is newer than installed
+    class { 'netbackup::client::install':
+      before => Class['netbackup::client::config']
+    }
+  } elsif $_version_cmp == -1 {
+    # $version is older than installed
+    fail("Installed version ${::netbackup_version} newer then ${version}, not downgrading")
   }
-  else {
-    notice ("Found NetBackup version: ${::netbackup_version}, have newer ${version} which I'll install using class netbackup::client::install")
-    class { 'netbackup::client::install': } -> class { 'netbackup::client::config': }
-  }
+
+  class { 'netbackup::client::config': }
 }
